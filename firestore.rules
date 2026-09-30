@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['id', 'email'])
+        && data.id is string && data.id.size() <= 128
+        && data.email is string && data.email.size() <= 256
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidChallengeState(data, userId) {
+      return data.userId == userId
+        && data.userId == request.auth.uid
+        && data.version is number
+        && data.settings is map
+        && data.days is map
+        && (!('hydration' in data) || data.hydration is map)
+        && (!('hydrationNotifications' in data) || data.hydrationNotifications is map)
+        && (!('lastActiveDayNumber' in data) || data.lastActiveDayNumber is number)
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
+        && (data.updatedAt is string && data.updatedAt.size() <= 64);
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().id == userId;
+      allow update: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().id == existing().id;
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      match /challenge/{challengeId} {
+        allow get: if isValidId(userId) && isValidId(challengeId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(challengeId) && isOwner(userId)
+          && isValidChallengeState(incoming(), userId);
+        allow update: if isValidId(userId) && isValidId(challengeId) && isOwner(userId)
+          && isValidChallengeState(incoming(), userId)
+          && incoming().userId == existing().userId;
+        allow delete: if isValidId(userId) && isValidId(challengeId) && isOwner(userId);
+      }
+    }
+
+    match /test/{testId} {
+      allow get: if isValidId(testId);
+      allow write: if false;
+    }
+  }
+}

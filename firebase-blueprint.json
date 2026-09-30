@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique user ID matching Firebase Auth UID",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 128
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User photo URL",
+          "maxLength": 1024
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of user creation",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of user update",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "email", "createdAt", "updatedAt"]
+    },
+    "ChallengeState": {
+      "title": "ChallengeState",
+      "description": "Winter Arc 90-day challenge tracking and settings document",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID matching Firebase Auth UID",
+          "maxLength": 128
+        },
+        "version": {
+          "type": "number",
+          "description": "Schema version number"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Challenge settings including startDate, wakeTime, sleepTime, hydrationGoalMl"
+        },
+        "days": {
+          "type": "object",
+          "description": "Map of day numbers (1..90) to day habit records and reflections"
+        },
+        "hydration": {
+          "type": "object",
+          "description": "Daily hydration records mapped by date string"
+        },
+        "hydrationNotifications": {
+          "type": "object",
+          "description": "User hydration notification preferences and schedule"
+        },
+        "lastActiveDayNumber": {
+          "type": "number",
+          "description": "The day number last active"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of challenge creation",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of challenge update",
+          "maxLength": 64
+        }
+      },
+      "required": ["userId", "version", "settings", "days", "updatedAt"]
+    },
+    "TestConnection": {
+      "title": "TestConnection",
+      "description": "Connection test document for health checks",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Status message",
+          "maxLength": 64
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores user profile documents accessible only by the user"
+    },
+    "/users/{userId}/challenge/{challengeId}": {
+      "schema": {
+        "$ref": "#/entities/ChallengeState"
+      },
+      "description": "Stores 90-day challenge tracking state, habit logs, reflections, and settings for the user"
+    },
+    "/test/{testId}": {
+      "schema": {
+        "$ref": "#/entities/TestConnection"
+      },
+      "description": "Public test doc used for initial connection verification"
+    }
+  }
+}

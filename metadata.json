@@ -1,0 +1,6 @@
+{
+  "name": "Winter Arc — 90-Day Challenge Tracker",
+  "description": "A disciplined, minimal 90-day habit and consistency tracker for the Winter Arc challenge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
