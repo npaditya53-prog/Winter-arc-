@@ -19,11 +19,8 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-export function playTickSound(isComplete: boolean, soundEnabled = true): void {
+export function playCompletionSound(soundEnabled = true): void {
   if (!soundEnabled) return;
-  // Per Section 9: Only play sound when marking complete, not when undoing
-  if (!isComplete) return;
-
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -31,6 +28,7 @@ export function playTickSound(isComplete: boolean, soundEnabled = true): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
+    // Existing satisfying rising pop sound (preserved exactly)
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(840, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1120, ctx.currentTime + 0.04);
@@ -45,5 +43,40 @@ export function playTickSound(isComplete: boolean, soundEnabled = true): void {
     osc.stop(ctx.currentTime + 0.06);
   } catch {
     // AudioContext might be blocked until user gesture, safely ignore
+  }
+}
+
+export function playUntickSound(soundEnabled = true): void {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    // Soft, satisfying pop-out / uncheck click (slightly softer, subtle descending pitch)
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(740, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(460, ctx.currentTime + 0.035);
+
+    gain.gain.setValueAtTime(0.042, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.05);
+  } catch {
+    // AudioContext might be blocked until user gesture, safely ignore
+  }
+}
+
+export function playTickSound(isComplete: boolean, soundEnabled = true): void {
+  if (isComplete) {
+    playCompletionSound(soundEnabled);
+  } else {
+    playUntickSound(soundEnabled);
   }
 }

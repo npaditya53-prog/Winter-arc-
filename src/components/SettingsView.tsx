@@ -1,28 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Download,
-  Upload,
-  RotateCcw,
   Check,
-  AlertTriangle,
   Save,
-  Bell,
   BellRing,
-  Droplets,
-  Clock,
-  Smartphone,
-  Info,
   Cloud,
-  Database,
-  LogIn,
   LogOut,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
+import type { SyncStatusInfo } from '../services/autoSave';
 import { ChallengeSettings, ChallengeState, HydrationNotificationSettings } from '../types/challenge';
 import { getDateForDay, getCurrentDayNumber } from '../utils/calculations';
-import { exportChallengeBackup } from '../utils/storage';
 import {
   getNotificationPermission,
   isPushNotificationSupported,
@@ -36,8 +25,8 @@ interface SettingsViewProps {
   state: ChallengeState;
   onUpdateSettings: (newSettings: Partial<ChallengeSettings>) => void;
   onUpdateHydrationNotifications: (newNotifications: Partial<HydrationNotificationSettings>) => void;
-  onImportBackup: (jsonStr: string) => void;
-  onResetChallenge: () => void;
+  onImportBackup?: (jsonStr: string) => void;
+  onResetChallenge?: () => void;
   theme: 'dark' | 'light';
   user?: User | null;
   isAuthLoading?: boolean;
@@ -46,6 +35,7 @@ interface SettingsViewProps {
   isCloudSynced?: boolean;
   onForceSync?: () => void;
   lastSyncedAt?: string | null;
+  syncStatus?: SyncStatusInfo;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -62,18 +52,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isCloudSynced = false,
   onForceSync,
   lastSyncedAt,
+  syncStatus,
 }) => {
   const isDark = theme === 'dark';
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form local state
   const [startDate, setStartDate] = useState(state.settings.startDate);
   const [hydrationGoal, setHydrationGoal] = useState(state.settings.hydrationGoal);
   const [hydrationGoalMl, setHydrationGoalMl] = useState(state.settings.hydrationGoalMl || 3500);
   const [streakThreshold, setStreakThreshold] = useState(state.settings.streakThreshold);
-  const [negativeHabitsList, setNegativeHabitsList] = useState(state.settings.negativeHabitsList);
-  const [studyTarget, setStudyTarget] = useState(state.settings.studyTarget);
-  const [skillTarget, setSkillTarget] = useState(state.settings.skillTarget);
   const [soundEnabled, setSoundEnabled] = useState(state.settings.soundEnabled);
   const [selectedTheme, setSelectedTheme] = useState<'dark' | 'light'>(state.settings.theme);
 
@@ -102,46 +89,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, []);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
-  const [resetConfirmInput, setResetConfirmInput] = useState('');
-
-  // PWA install prompt state
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isStandalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-      setIsAppInstalled(isStandalone);
-
-      const ua = window.navigator.userAgent.toLowerCase();
-      setIsIOS(/iphone|ipad|ipod/.test(ua));
-
-      const handleBeforeInstall = (e: any) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-      };
-      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    }
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setIsAppInstalled(true);
-        setDeferredPrompt(null);
-      }
-    } else if (isIOS) {
-      setShowIOSGuide(true);
-    }
-  };
 
   const currentDayNum = getCurrentDayNumber(startDate);
   const endDate = getDateForDay(startDate, 90);
@@ -197,9 +144,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       hydrationGoal,
       hydrationGoalMl: Number(hydrationGoalMl),
       streakThreshold: Number(streakThreshold),
-      negativeHabitsList,
-      studyTarget,
-      skillTarget,
       soundEnabled,
       theme: selectedTheme,
     });
@@ -216,38 +160,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        onImportBackup(text);
-        alert('Backup successfully imported.');
-      } catch (err) {
-        alert('Failed to parse backup file. Please ensure it is a valid Winter Arc JSON export.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleConfirmReset = () => {
-    if (resetConfirmInput.trim().toUpperCase() === 'RESET') {
-      onResetChallenge();
-      setShowResetConfirmModal(false);
-    }
-  };
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-16">
+    <div className="max-w-2xl mx-auto space-y-6 pb-16 font-system">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-white">
           Settings
         </h1>
         <p className="text-xs text-zinc-400 mt-0.5">
-          Configure dates, background hydration reminders, and manage your data.
+          Configure dates, background hydration reminders, and preferences.
         </p>
       </div>
 
@@ -316,9 +237,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <span className="text-sm font-medium text-white">
                         {user.displayName || 'Arc Athlete'}
                       </span>
-                      <span className="flex items-center gap-1 text-[11px] text-[#62C98A] font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#62C98A] animate-pulse" />
-                        <span>Cloud Active</span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            syncStatus?.status === 'offline'
+                              ? 'bg-zinc-500'
+                              : syncStatus?.status === 'pending_sync'
+                              ? 'bg-[#E4B95F]'
+                              : syncStatus?.status === 'saving' || syncStatus?.status === 'syncing'
+                              ? 'bg-[#5B8DEF] animate-ping'
+                              : 'bg-[#62C98A]'
+                          }`}
+                        />
+                        <span
+                          className={
+                            syncStatus?.status === 'offline'
+                              ? 'text-zinc-400'
+                              : syncStatus?.status === 'pending_sync'
+                              ? 'text-[#E4B95F]'
+                              : syncStatus?.status === 'saving' || syncStatus?.status === 'syncing'
+                              ? 'text-[#5B8DEF]'
+                              : 'text-[#62C98A]'
+                          }
+                        >
+                          {syncStatus ? syncStatus.message : isCloudSynced ? 'Cloud Active' : 'Connecting'}
+                        </span>
                       </span>
                     </div>
                     <p className="text-xs text-zinc-400">{user.email}</p>
@@ -554,54 +497,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </section>
 
-        {/* PWA Web App Installation */}
-        <section
-          className={`p-4 sm:p-5 rounded-2xl border transition-colors ${
-            isDark ? 'bg-[#13161C] border-[#222730]' : 'bg-white border-zinc-200 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#5B8DEF]/15 text-[#5B8DEF] flex items-center justify-center">
-                <Smartphone className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-white">
-                  Install Winter Arc (PWA)
-                </h2>
-                <span className="text-xs text-zinc-400">
-                  {isAppInstalled ? 'Running as standalone application' : 'Add to home screen for faster tracking'}
-                </span>
-              </div>
-            </div>
-
-            {!isAppInstalled && (
-              <button
-                type="button"
-                onClick={handleInstallClick}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-[#181C24] text-zinc-200 hover:bg-[#202530] border border-[#262B36] transition-colors"
-              >
-                {isIOS ? 'Install on iOS' : 'Install app'}
-              </button>
-            )}
-          </div>
-
-          {showIOSGuide && (
-            <div className="mt-3 p-3.5 rounded-xl bg-[#181C24] border border-[#262B36] text-xs text-zinc-300 space-y-1.5">
-              <p className="font-semibold text-white">To install on iPhone or iPad:</p>
-              <p>1. Tap the <strong>Share</strong> button in Safari’s bottom toolbar.</p>
-              <p>2. Scroll down and tap <strong>Add to Home Screen</strong>.</p>
-              <button
-                type="button"
-                onClick={() => setShowIOSGuide(false)}
-                className="text-[11px] text-[#5B8DEF] hover:underline pt-1 block"
-              >
-                Close instructions
-              </button>
-            </div>
-          )}
-        </section>
-
         {/* Challenge Timing & Start Date */}
         <section
           className={`p-4 sm:p-5 rounded-2xl border transition-colors ${
@@ -730,73 +625,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </section>
 
-        {/* Personalized Focus Targets */}
-        <section
-          className={`p-4 sm:p-5 rounded-2xl border transition-colors ${
-            isDark ? 'bg-[#13161C] border-[#222730]' : 'bg-white border-zinc-200 shadow-sm'
-          }`}
-        >
-          <h2 className="text-sm font-semibold text-white mb-1">
-            Personal focus targets
-          </h2>
-          <p className="text-xs text-zinc-400 mb-3">
-            Define custom parameters for specific habits.
-          </p>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Negative habits to avoid (Habit 06)
-              </label>
-              <input
-                type="text"
-                value={negativeHabitsList}
-                onChange={(e) => setNegativeHabitsList(e.target.value)}
-                placeholder="e.g. Doomscrolling, Late night snacking, Procrastination"
-                className={`w-full h-11 px-3.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-[#5B8DEF] ${
-                  isDark
-                    ? 'bg-[#181C24] border-[#262B36] text-white'
-                    : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Study routine target (Habit 10)
-              </label>
-              <input
-                type="text"
-                value={studyTarget}
-                onChange={(e) => setStudyTarget(e.target.value)}
-                placeholder="e.g. 2 hours Deep Math &amp; System Design"
-                className={`w-full h-11 px-3.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-[#5B8DEF] ${
-                  isDark
-                    ? 'bg-[#181C24] border-[#262B36] text-white'
-                    : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Skill development focus (Habit 11)
-              </label>
-              <input
-                type="text"
-                value={skillTarget}
-                onChange={(e) => setSkillTarget(e.target.value)}
-                placeholder="e.g. 1 hour deliberate practice in TypeScript"
-                className={`w-full h-11 px-3.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-[#5B8DEF] ${
-                  isDark
-                    ? 'bg-[#181C24] border-[#262B36] text-white'
-                    : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                }`}
-              />
-            </div>
-          </div>
-        </section>
-
         {/* Audio Feedback & Theme */}
         <section
           className={`p-4 sm:p-5 rounded-2xl border transition-colors ${
@@ -884,128 +712,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </form>
-
-      {/* Backup & Data Management */}
-      <section
-        className={`p-4 sm:p-5 rounded-2xl border transition-colors ${
-          isDark ? 'bg-[#13161C] border-[#222730]' : 'bg-white border-zinc-200 shadow-sm'
-        }`}
-      >
-        <h2 className="text-sm font-semibold text-white mb-1">
-          Backup and restore
-        </h2>
-        <p className="text-xs text-zinc-400 mb-3">
-          Download your progress as a JSON file or restore from a previous backup.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => exportChallengeBackup(state)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
-              isDark
-                ? 'bg-[#181C24] border-[#262B36] text-zinc-200 hover:bg-[#202530]'
-                : 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200'
-            }`}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export backup</span>
-          </button>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".json"
-            className="hidden"
-          />
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className={`px-3.5 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
-              isDark
-                ? 'bg-[#181C24] border-[#262B36] text-zinc-200 hover:bg-[#202530]'
-                : 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200'
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Restore backup</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Danger Zone: Protected Challenge Reset */}
-      <section className="p-4 sm:p-5 rounded-2xl border border-rose-900/40 bg-rose-950/10">
-        <h2 className="text-sm font-semibold text-rose-400 mb-1">
-          Reset challenge
-        </h2>
-        <p className="text-xs text-zinc-400 mb-3">
-          Resetting will clear all habit logs, reflections, and streak history.
-        </p>
-
-        <button
-          type="button"
-          onClick={() => setShowResetConfirmModal(true)}
-          className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-500 transition-colors flex items-center gap-1.5"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset challenge</span>
-        </button>
-      </section>
-
-      {/* Confirmation Modal for Reset */}
-      {showResetConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div
-            className={`w-full max-w-sm rounded-2xl p-5 border shadow-2xl space-y-3 ${
-              isDark ? 'bg-[#13161C] border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
-            }`}
-          >
-            <div className="flex items-center gap-2 text-rose-500">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <h3 className="text-base font-semibold">
-                Confirm challenge reset
-              </h3>
-            </div>
-
-            <p className="text-xs text-zinc-400">
-              This will erase all 90-day tracking data. Type <strong className="text-rose-400 font-mono">RESET</strong> to confirm:
-            </p>
-
-            <input
-              type="text"
-              value={resetConfirmInput}
-              onChange={(e) => setResetConfirmInput(e.target.value)}
-              placeholder="Type RESET"
-              className={`w-full h-10 px-3.5 rounded-xl text-sm border font-mono ${
-                isDark ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-zinc-50 border-zinc-300'
-              }`}
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowResetConfirmModal(false);
-                  setResetConfirmInput('');
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={resetConfirmInput.trim().toUpperCase() !== 'RESET'}
-                onClick={handleConfirmReset}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-rose-500"
-              >
-                Erase data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -7,6 +7,8 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { SettingsView } from './components/SettingsView';
 import { OnboardingModal } from './components/OnboardingModal';
 import { DayInspectorModal } from './components/DayInspectorModal';
+import { CompletionCelebrationModal } from './components/CompletionCelebrationModal';
+import { HydrationReminderToast } from './components/HydrationReminderToast';
 import { ChallengeSettings, ChallengeState, HydrationNotificationSettings } from './types/challenge';
 import {
   createInitialChallengeState,
@@ -31,12 +33,23 @@ import {
   subscribeToChallengeState,
   onAuthStateChanged,
 } from './services/firebase';
+import {
+  autoSaveManager,
+  resolveStateConflict,
+  type SyncStatusInfo,
+} from './services/autoSave';
 import type { User } from 'firebase/auth';
 
 export default function App() {
   const [challengeState, setChallengeState] = useState<ChallengeState | null>(() => {
     return loadChallengeState();
   });
+
+  // Latest mutable ref to always avoid closure stale reads during rapid habit clicks
+  const challengeStateRef = useRef<ChallengeState | null>(challengeState);
+  useEffect(() => {
+    challengeStateRef.current = challengeState;
+  }, [challengeState]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [activeDayNumber, setActiveDayNumber] = useState<number>(() => {
@@ -47,13 +60,37 @@ export default function App() {
   });
 
   const [inspectingDayNumber, setInspectingDayNumber] = useState<number | null>(null);
+  const [showCelebrationModal, setShowCelebrationModal] = useState<boolean>(false);
+  const [showHydrationToast, setShowHydrationToast] = useState<boolean>(false);
 
   // Firebase Auth and Cloud Sync state
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusInfo>(() => autoSaveManager.getInfo());
   const isSyncingFromRemote = useRef(false);
+
+  // Auto-Save Manager subscription
+  useEffect(() => {
+    const unsub = autoSaveManager.subscribe((info) => {
+      setSyncStatus(info);
+      if (info.status === 'saved' || info.status === 'synced') {
+        setIsCloudSynced(true);
+        if (info.lastSavedAt) {
+          setLastSyncedAt(info.lastSavedAt);
+        }
+      } else if (info.status === 'pending_sync' || info.status === 'offline') {
+        setIsCloudSynced(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Update autoSaveManager with current authenticated user
+  useEffect(() => {
+    autoSaveManager.setCurrentUser(user?.uid || null);
+  }, [user]);
 
   // 1. Initial Connection test & Firebase Auth State listener
   useEffect(() => {
@@ -67,17 +104,29 @@ export default function App() {
         try {
           const cloudState = await getChallengeFromFirestore(currentUser.uid);
           if (cloudState && cloudState.days) {
+            const { mergedState, hasLocalModifications } = resolveStateConflict(
+              challengeStateRef.current,
+              cloudState
+            );
+
             isSyncingFromRemote.current = true;
-            setChallengeState(cloudState);
-            saveChallengeState(cloudState);
+            challengeStateRef.current = mergedState;
+            setChallengeState(mergedState);
+            saveChallengeState(mergedState);
             setIsCloudSynced(true);
             setLastSyncedAt(new Date().toLocaleTimeString());
+
             setTimeout(() => {
               isSyncingFromRemote.current = false;
-            }, 1000);
-          } else if (challengeState) {
+            }, 600);
+
+            // If local changes were newer, push the merged state to cloud
+            if (hasLocalModifications) {
+              await autoSaveManager.save(mergedState, currentUser.uid);
+            }
+          } else if (challengeStateRef.current) {
             // First time login: sync current local data to Firestore
-            await saveChallengeToFirestore(currentUser.uid, challengeState);
+            await autoSaveManager.save(challengeStateRef.current, currentUser.uid);
             setIsCloudSynced(true);
             setLastSyncedAt(new Date().toLocaleTimeString());
           }
@@ -92,7 +141,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Real-time Firestore subscription when user is authenticated
+  // 2. Real-time Firestore subscription when user is authenticated with conflict resolution
   useEffect(() => {
     if (!user) return;
 
@@ -101,14 +150,25 @@ export default function App() {
       (remoteState) => {
         if (isSyncingFromRemote.current) return;
         if (remoteState && remoteState.days) {
+          const { mergedState, hasLocalModifications } = resolveStateConflict(
+            challengeStateRef.current,
+            remoteState
+          );
+
           isSyncingFromRemote.current = true;
-          setChallengeState(remoteState);
-          saveChallengeState(remoteState);
+          challengeStateRef.current = mergedState;
+          setChallengeState(mergedState);
+          saveChallengeState(mergedState);
           setIsCloudSynced(true);
           setLastSyncedAt(new Date().toLocaleTimeString());
+
           setTimeout(() => {
             isSyncingFromRemote.current = false;
-          }, 800);
+          }, 600);
+
+          if (hasLocalModifications) {
+            autoSaveManager.save(mergedState, user.uid);
+          }
         }
       },
       (err) => {
@@ -118,24 +178,6 @@ export default function App() {
 
     return () => unsubscribe();
   }, [user]);
-
-  // 3. Auto-save local state changes to Firestore with debounce
-  useEffect(() => {
-    if (!user || !challengeState || isSyncingFromRemote.current) return;
-
-    const timeout = setTimeout(async () => {
-      try {
-        await saveChallengeToFirestore(user.uid, challengeState);
-        setIsCloudSynced(true);
-        setLastSyncedAt(new Date().toLocaleTimeString());
-      } catch (err) {
-        console.error('Failed to autosave challenge state to Firestore:', err);
-        setIsCloudSynced(false);
-      }
-    }, 800);
-
-    return () => clearTimeout(timeout);
-  }, [challengeState, user]);
 
   // Register service worker and handle push messages
   useEffect(() => {
@@ -184,11 +226,11 @@ export default function App() {
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
-      root.style.backgroundColor = '#0b0c0f';
-      root.style.color = '#f4f4f2';
+      root.style.backgroundColor = '#0B0E14';
+      root.style.color = '#F3F4F6';
     } else {
       root.classList.remove('dark');
-      root.style.backgroundColor = '#fbfbfa';
+      root.style.backgroundColor = '#FBFBFA';
       root.style.color = '#121316';
     }
   }, [theme]);
@@ -227,37 +269,41 @@ export default function App() {
       hydrationGoalMl,
       hasStarted: true,
     });
-    saveChallengeState(newState);
+    challengeStateRef.current = newState;
     setChallengeState(newState);
     setActiveDayNumber(getCurrentDayNumber(startDate));
     setActiveTab('dashboard');
 
-    if (user) {
-      await saveChallengeToFirestore(user.uid, newState).catch(console.error);
-    }
+    await autoSaveManager.save(newState, user?.uid);
   };
 
   // Handler: Log Water Intake
   const handleLogWater = useCallback(
     (amountMl: number, dateStr?: string) => {
-      if (!challengeState) return;
-      playTickSound(true, challengeState.settings.soundEnabled);
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      playTickSound(true, currentState.settings.soundEnabled);
 
-      const updated = logWaterIntake(challengeState, amountMl, dateStr);
+      const updated = logWaterIntake(currentState, amountMl, dateStr);
+      challengeStateRef.current = updated;
       setChallengeState(updated);
+
+      // Save immediately locally and queue cloud sync
+      autoSaveManager.save(updated, user?.uid);
 
       // Also notify backend
       logWaterApi(amountMl, dateStr);
     },
-    [challengeState]
+    [user]
   );
 
-  // Handler: Toggle habit for a day
+  // Handler: Toggle habit for a day with instant auto-save and timestamp tracking
   const handleToggleHabit = useCallback(
     (habitId: string, dayNumber?: number) => {
-      if (!challengeState) return;
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
       const targetDay = dayNumber || activeDayNumber;
-      const dayRec = challengeState.days[targetDay];
+      const dayRec = currentState.days[targetDay];
       const currentHabits = dayRec?.habits || {};
       const newStatus = !currentHabits[habitId];
 
@@ -266,56 +312,81 @@ export default function App() {
         [habitId]: newStatus,
       };
 
-      playTickSound(newStatus, challengeState.settings.soundEnabled);
+      const updatedTimestamps: Record<string, string> = { ...(dayRec?.habitTimestamps || {}) };
+      if (newStatus) {
+        updatedTimestamps[habitId] = new Date().toISOString();
+      } else {
+        delete updatedTimestamps[habitId];
+      }
+
+      playTickSound(newStatus, currentState.settings.soundEnabled);
 
       const updatedState = saveDayRecord(
-        challengeState,
+        currentState,
         targetDay,
         updatedHabits,
-        dayRec?.reflection
+        dayRec?.reflection,
+        updatedTimestamps
       );
+
+      // Update state and mutable ref immediately
+      challengeStateRef.current = updatedState;
       setChallengeState(updatedState);
+
+      // Instant auto-save without waiting for user action or batch
+      autoSaveManager.save(updatedState, user?.uid);
     },
-    [challengeState, activeDayNumber]
+    [activeDayNumber, user]
   );
 
   // Handler: Update reflection notes
   const handleUpdateReflection = useCallback(
     (dayNumber: number, reflection: { wentWell: string; couldImprove: string; notes: string }) => {
-      if (!challengeState) return;
-      const dayRec = challengeState.days[dayNumber];
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const dayRec = currentState.days[dayNumber];
       const habits = dayRec?.habits || {};
 
       const updatedState = saveDayRecord(
-        challengeState,
+        currentState,
         dayNumber,
         habits,
-        reflection
+        reflection,
+        dayRec?.habitTimestamps
       );
+      challengeStateRef.current = updatedState;
       setChallengeState(updatedState);
+
+      autoSaveManager.save(updatedState, user?.uid);
     },
-    [challengeState]
+    [user]
   );
 
   // Handler: Update settings
   const handleUpdateSettings = useCallback(
     (newSettings: Partial<ChallengeSettings>) => {
-      if (!challengeState) return;
-      const updatedState = updateChallengeSettings(challengeState, newSettings);
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = updateChallengeSettings(currentState, newSettings);
+      challengeStateRef.current = updatedState;
       setChallengeState(updatedState);
       if (newSettings.startDate) {
         setActiveDayNumber(getCurrentDayNumber(newSettings.startDate));
       }
+      autoSaveManager.save(updatedState, user?.uid);
     },
-    [challengeState]
+    [user]
   );
 
   // Handler: Update hydration notification settings
   const handleUpdateHydrationNotifications = useCallback(
     (newNotifications: Partial<HydrationNotificationSettings>) => {
-      if (!challengeState) return;
-      const updatedState = updateHydrationNotificationSettings(challengeState, newNotifications);
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = updateHydrationNotificationSettings(currentState, newNotifications);
+      challengeStateRef.current = updatedState;
       setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
 
       // Sync settings to backend
       fetch('/api/notifications/settings', {
@@ -324,7 +395,7 @@ export default function App() {
         body: JSON.stringify({ settings: updatedState.hydrationNotifications }),
       }).catch((err) => console.error('Failed to sync notification settings:', err));
     },
-    [challengeState]
+    [user]
   );
 
   // Handler: Import backup
@@ -334,12 +405,10 @@ export default function App() {
       if (!parsed || !parsed.settings || !parsed.days) {
         throw new Error('Invalid format');
       }
-      saveChallengeState(parsed);
+      challengeStateRef.current = parsed;
       setChallengeState(parsed);
       setActiveDayNumber(getCurrentDayNumber(parsed.settings.startDate));
-      if (user) {
-        await saveChallengeToFirestore(user.uid, parsed).catch(console.error);
-      }
+      await autoSaveManager.save(parsed, user?.uid);
     },
     [user]
   );
@@ -347,13 +416,14 @@ export default function App() {
   // Handler: Reset challenge
   const handleResetChallenge = useCallback(async () => {
     resetChallengeData();
+    challengeStateRef.current = null;
     setChallengeState(null);
     setActiveTab('dashboard');
     setActiveDayNumber(1);
     if (user) {
       // create fresh skeleton on cloud
       const fresh = createInitialChallengeState();
-      await saveChallengeToFirestore(user.uid, fresh).catch(console.error);
+      await autoSaveManager.save(fresh, user.uid);
     }
   }, [user]);
 
@@ -374,20 +444,15 @@ export default function App() {
       await logoutFirebaseUser();
       setUser(null);
       setIsCloudSynced(false);
+      autoSaveManager.setCurrentUser(null);
     } catch (err) {
       console.error('Logout action error:', err);
     }
   };
 
   const handleForceSync = async () => {
-    if (!user || !challengeState) return;
-    try {
-      await saveChallengeToFirestore(user.uid, challengeState);
-      setIsCloudSynced(true);
-      setLastSyncedAt(new Date().toLocaleTimeString());
-    } catch (err) {
-      console.error('Manual force sync error:', err);
-    }
+    if (!challengeStateRef.current) return;
+    await autoSaveManager.save(challengeStateRef.current, user?.uid);
   };
 
   // First-time onboarding screen
@@ -401,10 +466,20 @@ export default function App() {
 
   const overallStats = calculateOverallStats(challengeState);
 
+  // Check 90-day completion
+  useEffect(() => {
+    if (
+      overallStats.currentDayNumber === 90 &&
+      overallStats.todayCompletedCount === 12
+    ) {
+      setShowCelebrationModal(true);
+    }
+  }, [overallStats.currentDayNumber, overallStats.todayCompletedCount]);
+
   return (
     <div
-      className={`min-h-screen flex flex-col transition-colors selection:bg-[#5B8DEF]/30 ${
-        theme === 'dark' ? 'bg-[#0b0c0f] text-[#f4f4f2]' : 'bg-[#fbfbfa] text-[#121316]'
+      className={`min-h-screen flex flex-col transition-colors selection:bg-[#38BDF8]/30 ${
+        theme === 'dark' ? 'bg-[#0B0E14] text-[#F3F4F6]' : 'bg-[#FBFBFA] text-[#121316]'
       }`}
     >
       {/* Top Bar Navigation */}
@@ -418,10 +493,11 @@ export default function App() {
         onLogin={handleLogin}
         onLogout={handleLogout}
         isCloudSynced={isCloudSynced}
+        syncStatus={syncStatus}
       />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-7">
         {activeTab === 'dashboard' && (
           <DashboardView
             state={challengeState}
@@ -475,6 +551,7 @@ export default function App() {
             isCloudSynced={isCloudSynced}
             onForceSync={handleForceSync}
             lastSyncedAt={lastSyncedAt}
+            syncStatus={syncStatus}
           />
         )}
       </main>
@@ -491,6 +568,24 @@ export default function App() {
             setActiveTab('today');
             setInspectingDayNumber(null);
           }}
+          theme={theme}
+        />
+      )}
+
+      {/* 90-Day Challenge Completion Celebration Modal */}
+      {showCelebrationModal && (
+        <CompletionCelebrationModal
+          stats={overallStats}
+          onClose={() => setShowCelebrationModal(false)}
+          theme={theme}
+        />
+      )}
+
+      {/* In-App Elegant Hydration Toast */}
+      {showHydrationToast && (
+        <HydrationReminderToast
+          onLogWater={handleLogWater}
+          onDismiss={() => setShowHydrationToast(false)}
           theme={theme}
         />
       )}

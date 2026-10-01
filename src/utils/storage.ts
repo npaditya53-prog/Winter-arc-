@@ -134,20 +134,24 @@ export function saveDayRecord(
   currentState: ChallengeState,
   dayNumber: number,
   habits: Record<string, boolean>,
-  reflection?: { wentWell: string; couldImprove: string; notes: string }
+  reflection?: { wentWell: string; couldImprove: string; notes: string },
+  habitTimestamps?: Record<string, string>
 ): ChallengeState {
   const existingDay = currentState.days[dayNumber] || {
     dayNumber,
     date: getDateForDay(currentState.settings.startDate, dayNumber),
     habits: {},
+    habitTimestamps: {},
     updatedAt: new Date().toISOString(),
   };
 
+  const now = new Date().toISOString();
   const updatedDay: DayRecord = {
     ...existingDay,
     habits: { ...habits },
+    habitTimestamps: habitTimestamps !== undefined ? { ...habitTimestamps } : existingDay.habitTimestamps,
     reflection: reflection ? { ...reflection } : existingDay.reflection,
-    updatedAt: new Date().toISOString(),
+    updatedAt: now,
   };
 
   const updatedState: ChallengeState = {

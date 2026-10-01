@@ -25,6 +25,7 @@ export interface DayRecord {
   dayNumber: number; // 1 to 90
   date: string; // 'YYYY-MM-DD'
   habits: Record<string, boolean>; // id -> completed
+  habitTimestamps?: Record<string, string>; // id -> ISO completion timestamp
   reflection?: DayReflection;
   updatedAt: string;
 }

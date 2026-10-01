@@ -2,9 +2,10 @@ import React from 'react';
 
 interface StatusLegendProps {
   className?: string;
+  theme?: 'dark' | 'light';
 }
 
-export const StatusLegend: React.FC<StatusLegendProps> = ({ className = '' }) => {
+export const StatusLegend: React.FC<StatusLegendProps> = ({ className = '', theme: _theme }) => {
   return (
     <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] text-zinc-400 select-none ${className}`}>
       <span className="flex items-center gap-1.5">

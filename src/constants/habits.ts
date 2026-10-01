@@ -54,63 +54,63 @@ export interface HabitVisualInfo {
 
 export const HABIT_VISUAL_MAP: Record<string, HabitVisualInfo> = {
   wakeUp: {
-    accent: '#E4B95F', // Warm Sunrise Yellow
-    categoryAccent: '#E4B95F',
+    accent: '#F59E0B', // 01 Wake Up → Warm Amber
+    categoryAccent: '#F59E0B',
     iconName: 'Sunrise',
   },
   hotWater: {
-    accent: '#E99A62', // Warm Orange
-    categoryAccent: '#E4B95F',
+    accent: '#F97316', // 02 Hot Water → Soft Orange
+    categoryAccent: '#F97316',
     iconName: 'Coffee',
   },
   sunlight: {
-    accent: '#E4B95F', // Golden Yellow
-    categoryAccent: '#E4B95F',
+    accent: '#EAB308', // 03 Sunlight → Yellow
+    categoryAccent: '#EAB308',
     iconName: 'Sun',
   },
   exercise: {
-    accent: '#62C98A', // Vitality Green
-    categoryAccent: '#62C98A',
+    accent: '#10B981', // 04 Exercise → Green
+    categoryAccent: '#10B981',
     iconName: 'Dumbbell',
   },
   suryaJal: {
-    accent: '#E99A62', // Sacred Dawn Orange
-    categoryAccent: '#E4B95F',
+    accent: '#D97706', // 05 Surya Jal → Gold
+    categoryAccent: '#D97706',
     iconName: 'Sparkles',
   },
   avoidNegativeHabits: {
-    accent: '#E87878', // Discipline Red / Coral
-    categoryAccent: '#E87878',
+    accent: '#D96B6B', // 06 Avoid Negative Habits → Muted Red
+    categoryAccent: '#D96B6B',
     iconName: 'ShieldAlert',
   },
   hydration: {
-    accent: '#5B8DEF', // Water Blue
-    categoryAccent: '#62C98A',
+    accent: '#38BDF8', // 07 Hydration → Ice Blue
+    categoryAccent: '#38BDF8',
     iconName: 'Droplets',
   },
   noJunkSugar: {
-    accent: '#E87878', // Clean Discipline Red
-    categoryAccent: '#E87878',
+    accent: '#14B8A6', // 08 No Junk Food → Mint / Green
+    categoryAccent: '#14B8A6',
     iconName: 'Apple',
   },
   reduceMobile: {
-    accent: '#9A7BEA', // Digital Detox Purple
-    categoryAccent: '#E87878',
+    accent: '#A855F7', // 09 Reduce Mobile Usage → Purple
+    categoryAccent: '#A855F7',
     iconName: 'Smartphone',
   },
   study: {
-    accent: '#5B8DEF', // Intellectual Blue
-    categoryAccent: '#9A7BEA',
+    accent: '#3B82F6', // 10 Study → Blue
+    categoryAccent: '#3B82F6',
     iconName: 'BookOpen',
   },
   skillDevelopment: {
-    accent: '#9A7BEA', // Mastery Purple
-    categoryAccent: '#9A7BEA',
+    accent: '#8B5CF6', // 11 Skill Development → Violet
+    categoryAccent: '#8B5CF6',
     iconName: 'Lightbulb',
   },
   sleepNoPhone: {
-    accent: '#5B8DEF', // Peaceful Night Blue
-    categoryAccent: '#5B8DEF',
+    accent: '#6366F1', // 12 Sleep → Indigo
+    categoryAccent: '#6366F1',
     iconName: 'Moon',
   },
 };
