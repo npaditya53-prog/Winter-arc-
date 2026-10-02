@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { X, ArrowRight, BookOpen } from 'lucide-react';
-import { HABIT_DEFINITIONS } from '../constants/habits';
 import { ChallengeState, DayRecord, HabitDefinition } from '../types/challenge';
 import {
   calculateDayHabitStatusSummary,
   formatDisplayDate,
   getCurrentDayNumber,
+  getEffectiveHabits,
 } from '../utils/calculations';
 import { HabitRow } from './HabitRow';
 import { StatusLegend } from './StatusLegend';
@@ -138,9 +138,9 @@ export const DayInspectorModal: React.FC<DayInspectorModalProps> = ({
             </div>
           </div>
 
-          {/* 12 Habits Checklist with exact Green / Red / Neutral status */}
+          {/* Habits Checklist with exact Green / Red / Neutral status */}
           <div className="space-y-2">
-            {HABIT_DEFINITIONS.map((habit) => {
+            {getEffectiveHabits(state).map((habit) => {
               const isCompleted = !!dayRec?.habits?.[habit.id];
               let customTarget: string | undefined = undefined;
 

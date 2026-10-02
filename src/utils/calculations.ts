@@ -1,5 +1,22 @@
 import { HABIT_DEFINITIONS } from '../constants/habits';
-import { ChallengeState, DayRecord, DayStatus, HabitStatus, OverallStats } from '../types/challenge';
+import { ChallengeState, DayRecord, DayStatus, HabitDefinition, HabitStatus, OverallStats } from '../types/challenge';
+
+/**
+ * Returns user-customized habits from ChallengeState or defaults to HABIT_DEFINITIONS
+ */
+export function getEffectiveHabits(state?: ChallengeState | null): HabitDefinition[] {
+  if (state?.habits && state.habits.length > 0) {
+    return state.habits;
+  }
+  return HABIT_DEFINITIONS;
+}
+
+/**
+ * Returns only active (non-disabled) habits
+ */
+export function getActiveHabits(state?: ChallengeState | null): HabitDefinition[] {
+  return getEffectiveHabits(state).filter((h) => !h.disabled);
+}
 
 /**
  * Core Status System (GREEN = COMPLETED, RED = MISSED, NEUTRAL = PENDING)
@@ -42,9 +59,11 @@ export interface DayHabitStatusSummary {
 export function calculateDayHabitStatusSummary(
   dayRecord: DayRecord | undefined,
   dayNumber: number,
-  currentDayNumber: number
+  currentDayNumber: number,
+  habits?: HabitDefinition[]
 ): DayHabitStatusSummary {
-  const totalCount = HABIT_DEFINITIONS.length;
+  const habitsList = habits ? habits.filter((h) => !h.disabled) : HABIT_DEFINITIONS.filter((h) => !h.disabled);
+  const totalCount = habitsList.length || 1;
   const isPast = dayNumber < currentDayNumber;
   const isToday = dayNumber === currentDayNumber;
   const isFuture = dayNumber > currentDayNumber;
@@ -53,7 +72,7 @@ export function calculateDayHabitStatusSummary(
   let missedCount = 0;
   let pendingCount = 0;
 
-  for (const habit of HABIT_DEFINITIONS) {
+  for (const habit of habitsList) {
     const isCompleted = !!dayRecord?.habits?.[habit.id];
     const status = getHabitStatus(isCompleted, dayNumber, currentDayNumber);
     if (status === 'completed') {
@@ -156,8 +175,9 @@ export function getDayStatus(percentage: number): DayStatus {
 /**
  * Calculate completion percentage and count for a single day record
  */
-export function calculateDayStats(dayRecord?: DayRecord) {
-  const totalHabits = HABIT_DEFINITIONS.length;
+export function calculateDayStats(dayRecord?: DayRecord, habits?: HabitDefinition[]) {
+  const activeHabits = habits ? habits.filter((h) => !h.disabled) : HABIT_DEFINITIONS.filter((h) => !h.disabled);
+  const totalHabits = activeHabits.length || 1;
   if (!dayRecord || !dayRecord.habits) {
     return {
       completedCount: 0,
@@ -167,7 +187,7 @@ export function calculateDayStats(dayRecord?: DayRecord) {
     };
   }
 
-  const completedCount = HABIT_DEFINITIONS.filter((h) => !!dayRecord.habits[h.id]).length;
+  const completedCount = activeHabits.filter((h) => !!dayRecord.habits[h.id]).length;
   const percentage = Math.round((completedCount / totalHabits) * 100);
   const status = getDayStatus(percentage);
 
@@ -185,6 +205,8 @@ export function calculateDayStats(dayRecord?: DayRecord) {
 export function calculateOverallStats(state: ChallengeState): OverallStats {
   const currentDayNum = getCurrentDayNumber(state.settings.startDate);
   const streakThreshold = state.settings.streakThreshold || 75;
+  const activeHabits = getActiveHabits(state);
+  const totalHabitsCount = activeHabits.length || 1;
 
   let totalCompletedHabits = 0;
   let completedDaysCount = 0; // 100% adherence days
@@ -198,7 +220,7 @@ export function calculateOverallStats(state: ChallengeState): OverallStats {
 
   for (let i = 1; i <= evaluatedDaysCount; i++) {
     const dayRec = state.days[i];
-    const stats = calculateDayStats(dayRec);
+    const stats = calculateDayStats(dayRec, activeHabits);
 
     totalCompletedHabits += stats.completedCount;
     sumDailyPercentage += stats.percentage;
@@ -229,7 +251,7 @@ export function calculateOverallStats(state: ChallengeState): OverallStats {
   }
 
   // Current Streak: working backward from today (or yesterday if today is still in progress)
-  const todayStats = calculateDayStats(state.days[currentDayNum]);
+  const todayStats = calculateDayStats(state.days[currentDayNum], activeHabits);
   const todayQualifies = todayStats.percentage >= streakThreshold;
 
   let currentStreak = 0;
@@ -260,8 +282,8 @@ export function calculateOverallStats(state: ChallengeState): OverallStats {
     ? Math.round(sumDailyPercentage / evaluatedDaysCount)
     : 0;
 
-  // Evaluated progress (Section 14: calculated strictly from eligible/currently evaluated days, do NOT penalize future days)
-  const evaluatedPossibleHabits = evaluatedDaysCount * HABIT_DEFINITIONS.length;
+  // Evaluated progress (calculated strictly from eligible/currently evaluated days)
+  const evaluatedPossibleHabits = evaluatedDaysCount * totalHabitsCount;
   const overallProgress = evaluatedPossibleHabits > 0
     ? Math.round((totalCompletedHabits / evaluatedPossibleHabits) * 100)
     : 0;
@@ -269,15 +291,15 @@ export function calculateOverallStats(state: ChallengeState): OverallStats {
   // Total 90-day progress
   let allCompletedHabits = 0;
   for (let i = 1; i <= 90; i++) {
-    const stats = calculateDayStats(state.days[i]);
+    const stats = calculateDayStats(state.days[i], activeHabits);
     allCompletedHabits += stats.completedCount;
   }
-  const totalProtocolProgress = Math.round((allCompletedHabits / (90 * HABIT_DEFINITIONS.length)) * 100);
+  const totalProtocolProgress = Math.round((allCompletedHabits / (90 * totalHabitsCount)) * 100);
 
   return {
     currentDayNumber: currentDayNum,
     daysRemaining: Math.max(0, 90 - currentDayNum),
-    overallProgress, // evaluated adherence (Section 14)
+    overallProgress, // evaluated adherence
     totalProtocolProgress, // total 90-day milestone progress
     currentStreak,
     bestStreak: Math.max(bestStreak, currentStreak),
@@ -303,6 +325,8 @@ export interface HabitConsistencyItem {
   category: string;
   number: string;
   target: string;
+  color?: string;
+  iconName?: string;
   completedDays: number;
   missedDays: number;
   pendingDays: number;
@@ -313,8 +337,9 @@ export interface HabitConsistencyItem {
 export function calculateHabitConsistency(state: ChallengeState): HabitConsistencyItem[] {
   const currentDayNum = getCurrentDayNumber(state.settings.startDate);
   const totalDays = Math.max(1, currentDayNum);
+  const habitsToTrack = getEffectiveHabits(state);
 
-  return HABIT_DEFINITIONS.map((habit) => {
+  return habitsToTrack.map((habit) => {
     let completedDays = 0;
     let missedDays = 0;
     let pendingDays = 0;
@@ -334,12 +359,15 @@ export function calculateHabitConsistency(state: ChallengeState): HabitConsisten
     }
 
     const percentage = Math.round((completedDays / totalDays) * 100);
+
     return {
       id: habit.id,
       name: habit.name,
       category: habit.category,
       number: habit.number,
       target: habit.target,
+      color: habit.color,
+      iconName: habit.iconName,
       completedDays,
       missedDays,
       pendingDays,

@@ -9,20 +9,26 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { DayInspectorModal } from './components/DayInspectorModal';
 import { CompletionCelebrationModal } from './components/CompletionCelebrationModal';
 import { HydrationReminderToast } from './components/HydrationReminderToast';
-import { ChallengeSettings, ChallengeState, HydrationNotificationSettings } from './types/challenge';
+import { ChallengeSettings, ChallengeState, HabitDefinition, HydrationNotificationSettings } from './types/challenge';
 import {
+  addHabitToState,
   createInitialChallengeState,
+  deleteHabitFromState,
   loadChallengeState,
   logWaterIntake,
+  reorderHabitsInState,
   resetChallengeData,
   saveChallengeState,
   saveDayRecord,
+  toggleHabitDisabledInState,
   updateChallengeSettings,
+  updateHabitInState,
   updateHydrationNotificationSettings,
 } from './utils/storage';
 import { calculateOverallStats, getCurrentDayNumber } from './utils/calculations';
 import { playTickSound } from './utils/audio';
 import { logWaterApi, registerServiceWorker } from './utils/notifications';
+import { syncAllHabitReminders } from './utils/habitReminders';
 import {
   auth,
   loginWithGoogle,
@@ -378,6 +384,78 @@ export default function App() {
     [user]
   );
 
+  // Synchronize scheduled habit reminders whenever habits change
+  useEffect(() => {
+    if (challengeState?.habits) {
+      syncAllHabitReminders(challengeState.habits);
+    }
+  }, [challengeState?.habits]);
+
+  // Habit Management Handlers
+  const handleUpdateHabit = useCallback(
+    (updatedHabit: HabitDefinition) => {
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = updateHabitInState(currentState, updatedHabit);
+      challengeStateRef.current = updatedState;
+      setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
+      syncAllHabitReminders(updatedState.habits || []);
+    },
+    [user]
+  );
+
+  const handleAddHabit = useCallback(
+    (newHabitData: HabitDefinition) => {
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = addHabitToState(currentState, newHabitData);
+      challengeStateRef.current = updatedState;
+      setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
+      syncAllHabitReminders(updatedState.habits || []);
+    },
+    [user]
+  );
+
+  const handleDeleteHabit = useCallback(
+    (habitId: string) => {
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = deleteHabitFromState(currentState, habitId);
+      challengeStateRef.current = updatedState;
+      setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
+      syncAllHabitReminders(updatedState.habits || []);
+    },
+    [user]
+  );
+
+  const handleReorderHabits = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = reorderHabitsInState(currentState, fromIndex, toIndex);
+      challengeStateRef.current = updatedState;
+      setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
+    },
+    [user]
+  );
+
+  const handleToggleHabitDisabled = useCallback(
+    (habitId: string) => {
+      const currentState = challengeStateRef.current;
+      if (!currentState) return;
+      const updatedState = toggleHabitDisabledInState(currentState, habitId);
+      challengeStateRef.current = updatedState;
+      setChallengeState(updatedState);
+      autoSaveManager.save(updatedState, user?.uid);
+      syncAllHabitReminders(updatedState.habits || []);
+    },
+    [user]
+  );
+
   // Handler: Update hydration notification settings
   const handleUpdateHydrationNotifications = useCallback(
     (newNotifications: Partial<HydrationNotificationSettings>) => {
@@ -506,6 +584,11 @@ export default function App() {
             onLogWater={handleLogWater}
             onNavigate={setActiveTab}
             theme={theme}
+            onUpdateHabit={handleUpdateHabit}
+            onAddHabit={handleAddHabit}
+            onDeleteHabit={handleDeleteHabit}
+            onReorderHabits={handleReorderHabits}
+            onToggleHabitDisabled={handleToggleHabitDisabled}
           />
         )}
 

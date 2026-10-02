@@ -148,6 +148,7 @@ export async function saveChallengeToFirestore(
       lastActiveDayNumber: state.lastActiveDayNumber || 1,
       createdAt: state.createdAt || now,
       updatedAt: now,
+      habits: state.habits || [],
     };
 
     await setDoc(challengeRef, payload, { merge: true });
@@ -178,6 +179,7 @@ export async function getChallengeFromFirestore(
       hydrationNotifications: data.hydrationNotifications ?? {},
       lastActiveDayNumber: data.lastActiveDayNumber ?? 1,
       createdAt: data.createdAt ?? new Date().toISOString(),
+      habits: data.habits || undefined,
     } as ChallengeState;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -207,6 +209,7 @@ export function subscribeToChallengeState(
           hydrationNotifications: data.hydrationNotifications ?? {},
           lastActiveDayNumber: data.lastActiveDayNumber ?? 1,
           createdAt: data.createdAt ?? new Date().toISOString(),
+          habits: data.habits || undefined,
         };
         onUpdate(state);
       }

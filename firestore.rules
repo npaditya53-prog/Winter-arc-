@@ -47,7 +47,8 @@ service cloud.firestore {
         && (!('hydrationNotifications' in data) || data.hydrationNotifications is map)
         && (!('lastActiveDayNumber' in data) || data.lastActiveDayNumber is number)
         && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
-        && (data.updatedAt is string && data.updatedAt.size() <= 64);
+        && (data.updatedAt is string && data.updatedAt.size() <= 64)
+        && (!('habits' in data) || data.habits is list);
     }
 
     match /users/{userId} {

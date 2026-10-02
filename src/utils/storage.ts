@@ -1,5 +1,5 @@
 import { DEFAULT_HYDRATION_NOTIFICATIONS, DEFAULT_SETTINGS, getTodayDateString, HABIT_DEFINITIONS } from '../constants/habits';
-import { ChallengeSettings, ChallengeState, DayHydrationRecord, DayRecord, HydrationNotificationSettings } from '../types/challenge';
+import { ChallengeSettings, ChallengeState, DayHydrationRecord, DayRecord, HabitDefinition, HydrationNotificationSettings } from '../types/challenge';
 import { getDateForDay, getCurrentDayNumber } from './calculations';
 
 const STORAGE_KEY = 'winter_arc_tracker_v1';
@@ -53,6 +53,7 @@ export function createInitialChallengeState(settings: Partial<ChallengeSettings>
     hydrationNotifications: { ...DEFAULT_HYDRATION_NOTIFICATIONS },
     createdAt: now,
     lastActiveDayNumber: getCurrentDayNumber(mergedSettings.startDate),
+    habits: [...HABIT_DEFINITIONS],
   };
 }
 
@@ -79,9 +80,16 @@ export function loadChallengeState(): ChallengeState | null {
       parsed.hydrationNotifications = { ...DEFAULT_HYDRATION_NOTIFICATIONS };
     }
 
+    let needsUpdate = false;
+
+    // Ensure customized habits exist
+    if (!parsed.habits || !Array.isArray(parsed.habits) || parsed.habits.length === 0) {
+      parsed.habits = [...HABIT_DEFINITIONS];
+      needsUpdate = true;
+    }
+
     // Ensure all 90 days exist and dates match current startDate
     const startDate = parsed.settings.startDate || getTodayDateString();
-    let needsUpdate = false;
 
     for (let i = 1; i <= 90; i++) {
       if (!parsed.days[i]) {
@@ -313,4 +321,159 @@ export function importChallengeBackup(jsonString: string): ChallengeState {
  */
 export function resetChallengeData(): void {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * Updates a habit's definition persistently while preserving all historical completion data
+ */
+export function updateHabitInState(
+  currentState: ChallengeState,
+  updatedHabit: HabitDefinition
+): ChallengeState {
+  const currentHabits = currentState.habits && currentState.habits.length > 0
+    ? currentState.habits
+    : [...HABIT_DEFINITIONS];
+
+  const updatedHabits = currentHabits.map((h) =>
+    h.id === updatedHabit.id ? { ...h, ...updatedHabit } : h
+  );
+
+  const updatedState: ChallengeState = {
+    ...currentState,
+    habits: updatedHabits,
+  };
+
+  saveChallengeState(updatedState);
+  return updatedState;
+}
+
+/**
+ * Adds a new habit to the challenge list with a generated unique ID and sequence number
+ */
+export function addHabitToState(
+  currentState: ChallengeState,
+  newHabitData: Omit<HabitDefinition, 'number' | 'id'> & { id?: string; number?: string }
+): ChallengeState {
+  const currentHabits = currentState.habits && currentState.habits.length > 0
+    ? currentState.habits
+    : [...HABIT_DEFINITIONS];
+
+  const nextNumber = String(currentHabits.length + 1).padStart(2, '0');
+  const habitId = newHabitData.id || `habit_${Date.now()}`;
+
+  const finalizedHabit: HabitDefinition = {
+    id: habitId,
+    number: newHabitData.number || nextNumber,
+    name: newHabitData.name.trim(),
+    shortDescription: newHabitData.shortDescription.trim(),
+    target: newHabitData.target.trim() || 'Daily practice',
+    category: newHabitData.category || 'Discipline',
+    color: newHabitData.color || 'sky',
+    iconName: newHabitData.iconName || 'Target',
+    reminderTime: newHabitData.reminderTime,
+    reminderEnabled: !!newHabitData.reminderEnabled,
+    disabled: !!newHabitData.disabled,
+  };
+
+  const updatedHabits = [...currentHabits, finalizedHabit];
+
+  const updatedState: ChallengeState = {
+    ...currentState,
+    habits: updatedHabits,
+  };
+
+  saveChallengeState(updatedState);
+  return updatedState;
+}
+
+/**
+ * Deletes a habit from the active challenge list
+ */
+export function deleteHabitFromState(
+  currentState: ChallengeState,
+  habitId: string
+): ChallengeState {
+  const currentHabits = currentState.habits && currentState.habits.length > 0
+    ? currentState.habits
+    : [...HABIT_DEFINITIONS];
+
+  const filteredHabits = currentHabits.filter((h) => h.id !== habitId);
+
+  // Renumber remaining habits cleanly
+  const renumberedHabits = filteredHabits.map((h, idx) => ({
+    ...h,
+    number: String(idx + 1).padStart(2, '0'),
+  }));
+
+  const updatedState: ChallengeState = {
+    ...currentState,
+    habits: renumberedHabits,
+  };
+
+  saveChallengeState(updatedState);
+  return updatedState;
+}
+
+/**
+ * Reorders habits (move up / down) and updates sequence numbers
+ */
+export function reorderHabitsInState(
+  currentState: ChallengeState,
+  fromIndex: number,
+  toIndex: number
+): ChallengeState {
+  const currentHabits = currentState.habits && currentState.habits.length > 0
+    ? [...currentState.habits]
+    : [...HABIT_DEFINITIONS];
+
+  if (
+    fromIndex < 0 ||
+    fromIndex >= currentHabits.length ||
+    toIndex < 0 ||
+    toIndex >= currentHabits.length ||
+    fromIndex === toIndex
+  ) {
+    return currentState;
+  }
+
+  const [movedHabit] = currentHabits.splice(fromIndex, 1);
+  currentHabits.splice(toIndex, 0, movedHabit);
+
+  // Re-sequence numbers
+  const resequenced = currentHabits.map((h, idx) => ({
+    ...h,
+    number: String(idx + 1).padStart(2, '0'),
+  }));
+
+  const updatedState: ChallengeState = {
+    ...currentState,
+    habits: resequenced,
+  };
+
+  saveChallengeState(updatedState);
+  return updatedState;
+}
+
+/**
+ * Toggles a habit's active vs disabled state
+ */
+export function toggleHabitDisabledInState(
+  currentState: ChallengeState,
+  habitId: string
+): ChallengeState {
+  const currentHabits = currentState.habits && currentState.habits.length > 0
+    ? currentState.habits
+    : [...HABIT_DEFINITIONS];
+
+  const updatedHabits = currentHabits.map((h) =>
+    h.id === habitId ? { ...h, disabled: !h.disabled } : h
+  );
+
+  const updatedState: ChallengeState = {
+    ...currentState,
+    habits: updatedHabits,
+  };
+
+  saveChallengeState(updatedState);
+  return updatedState;
 }

@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Flame,
   ArrowRight,
+  Pencil,
+  Check,
+  Plus,
 } from 'lucide-react';
-import { HABIT_DEFINITIONS, MOTIVATIONAL_REFLECTIONS } from '../constants/habits';
-import { ChallengeState, OverallStats } from '../types/challenge';
-import { formatDisplayDate } from '../utils/calculations';
+import { MOTIVATIONAL_REFLECTIONS } from '../constants/habits';
+import { ChallengeState, HabitDefinition, OverallStats } from '../types/challenge';
+import { formatDisplayDate, getEffectiveHabits } from '../utils/calculations';
 import { HabitRow } from './HabitRow';
 import { StatusLegend } from './StatusLegend';
+import { HabitEditModal } from './HabitEditModal';
+import { DeleteHabitConfirmModal } from './DeleteHabitConfirmModal';
 
 interface DashboardViewProps {
   state: ChallengeState;
@@ -16,6 +21,12 @@ interface DashboardViewProps {
   onLogWater?: (amountMl: number) => void;
   onNavigate: (tab: 'dashboard' | 'today' | 'calendar' | 'analytics' | 'settings') => void;
   theme: 'dark' | 'light';
+  // Habit Management Handlers
+  onUpdateHabit?: (habit: HabitDefinition) => void;
+  onAddHabit?: (habitData: HabitDefinition) => void;
+  onDeleteHabit?: (habitId: string) => void;
+  onReorderHabits?: (fromIndex: number, toIndex: number) => void;
+  onToggleHabitDisabled?: (habitId: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -24,12 +35,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onToggleHabit,
   onNavigate,
   theme,
+  onUpdateHabit,
+  onAddHabit,
+  onDeleteHabit,
+  onReorderHabits,
+  onToggleHabitDisabled,
 }) => {
   const isDark = theme === 'dark';
   const todayRecord = state.days[stats.currentDayNumber];
 
   const motivationalQuote =
     MOTIVATIONAL_REFLECTIONS[(stats.currentDayNumber - 1) % MOTIVATIONAL_REFLECTIONS.length];
+
+  // Edit Mode state
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [editingHabit, setEditingHabit] = useState<HabitDefinition | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [deletingHabit, setDeletingHabit] = useState<HabitDefinition | null>(null);
+
+  const habits = getEffectiveHabits(state);
+
+  const handleSaveEditedHabit = (savedHabit: HabitDefinition) => {
+    if (editingHabit) {
+      if (onUpdateHabit) {
+        onUpdateHabit(savedHabit);
+      }
+    } else {
+      if (onAddHabit) {
+        onAddHabit(savedHabit);
+      }
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingHabit && onDeleteHabit) {
+      onDeleteHabit(deletingHabit.id);
+    }
+    setDeletingHabit(null);
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-20 sm:pb-16 font-system">
@@ -98,29 +141,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </section>
 
-      {/* 4. Today's Habits (The Core Action Section) */}
+      {/* 3. Today's Habits / Edit Habits Section */}
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between px-1">
+        <div className="flex items-center justify-between px-1">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Today&apos;s Habits
+            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>{isEditMode ? 'Edit Habits' : "Today's Habits"}</span>
+              {isEditMode && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] font-bold border border-[#38BDF8]/35">
+                  Edit Mode
+                </span>
+              )}
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              {stats.todayCompletedCount} of 12 completed · Tap any habit to complete
+              {isEditMode
+                ? 'Reorder, edit details, set reminders, or add disciplines'
+                : `${stats.todayCompletedCount} of ${stats.todayTotalCount} completed · Tap any habit to complete`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('today')}
-            className="text-xs text-[#38BDF8] hover:underline font-medium"
-          >
-            Reflect & Details
-          </button>
+
+          <div className="flex items-center gap-2">
+            {isEditMode ? (
+              <button
+                type="button"
+                onClick={() => setIsEditMode(false)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#10B981] hover:bg-[#059669] text-[#0B0E14] transition-all active:scale-95 shadow-sm shadow-[#10B981]/30"
+              >
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Done</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#161C26] hover:bg-[#202836] text-[#38BDF8] border border-[#283244] transition-all active:scale-95 shadow-sm"
+                  aria-label="Edit Habits"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('today')}
+                  className="text-xs text-zinc-400 hover:text-[#38BDF8] transition-colors font-medium hidden sm:inline-block ml-1"
+                >
+                  Reflect & Details
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* 12 Habits colorful bubbles (Image 2 spacious layout) */}
+        {/* Habits colorful bubbles */}
         <div className="space-y-3.5 sm:space-y-4">
-          {HABIT_DEFINITIONS.map((habit) => {
+          {habits.map((habit, index) => {
             const isCompleted = !!todayRecord?.habits?.[habit.id];
             let customTarget: string | undefined;
             if (habit.id === 'study' && state.settings.studyTarget) {
@@ -141,15 +216,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 theme={theme}
                 dayNumber={stats.currentDayNumber}
                 currentDayNumber={stats.currentDayNumber}
+                isEditMode={isEditMode}
+                onEditHabit={(h) => setEditingHabit(h)}
+                onDeleteHabit={(h) => setDeletingHabit(h)}
+                onMoveUp={() => onReorderHabits && onReorderHabits(index, index - 1)}
+                onMoveDown={() => onReorderHabits && onReorderHabits(index, index + 1)}
+                canMoveUp={index > 0}
+                canMoveDown={index < habits.length - 1}
+                onToggleDisabled={(id) => onToggleHabitDisabled && onToggleHabitDisabled(id)}
               />
             );
           })}
         </div>
 
-        <div className="pt-2 px-1">
-          <StatusLegend theme={theme} />
-        </div>
+        {/* Add Habit Button in Edit Mode */}
+        {isEditMode && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-[#38BDF8]/40 hover:border-[#38BDF8] bg-[#38BDF8]/10 hover:bg-[#38BDF8]/15 text-[#38BDF8] flex items-center justify-center gap-2 font-semibold text-sm transition-all active:scale-[0.99] shadow-sm"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Habit</span>
+            </button>
+          </div>
+        )}
+
+        {!isEditMode && (
+          <div className="pt-2 px-1">
+            <StatusLegend theme={theme} />
+          </div>
+        )}
       </section>
+
+      {/* Edit Habit Modal */}
+      {editingHabit && (
+        <HabitEditModal
+          isOpen={true}
+          habit={editingHabit}
+          onSave={handleSaveEditedHabit}
+          onClose={() => setEditingHabit(null)}
+          theme={theme}
+        />
+      )}
+
+      {/* Add Habit Modal */}
+      {isAddModalOpen && (
+        <HabitEditModal
+          isOpen={true}
+          habit={null}
+          onSave={handleSaveEditedHabit}
+          onClose={() => setIsAddModalOpen(false)}
+          theme={theme}
+        />
+      )}
+
+      {/* Delete Habit Confirmation Modal */}
+      {deletingHabit && (
+        <DeleteHabitConfirmModal
+          isOpen={true}
+          habit={deletingHabit}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeletingHabit(null)}
+          theme={theme}
+        />
+      )}
     </div>
   );
 };

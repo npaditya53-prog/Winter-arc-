@@ -9,6 +9,11 @@ export interface HabitDefinition {
   shortDescription: string;
   target: string;
   category: 'Morning' | 'Physical' | 'Discipline' | 'Intellect' | 'Evening';
+  color?: string; // Theme color key (e.g. 'amber', 'orange', 'emerald') or hex
+  iconName?: string; // Lucide icon identifier
+  reminderTime?: string; // e.g. "07:30"
+  reminderEnabled?: boolean;
+  disabled?: boolean; // active vs paused/disabled state
 }
 
 export type HabitStatus = 'completed' | 'missed' | 'pending';
@@ -68,6 +73,7 @@ export interface ChallengeState {
   hydrationNotifications: HydrationNotificationSettings;
   createdAt: string;
   lastActiveDayNumber: number;
+  habits?: HabitDefinition[]; // User's customized list of habits
 }
 
 export interface OverallStats {

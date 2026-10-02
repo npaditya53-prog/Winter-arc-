@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { HABIT_DEFINITIONS, MOTIVATIONAL_REFLECTIONS } from '../constants/habits';
+import { MOTIVATIONAL_REFLECTIONS } from '../constants/habits';
 import { ChallengeState, DayRecord, HabitDefinition } from '../types/challenge';
 import {
   calculateDayHabitStatusSummary,
   formatDisplayDate,
   getCurrentDayNumber,
+  getEffectiveHabits,
 } from '../utils/calculations';
 import { HabitRow } from './HabitRow';
 import { ConfirmHistoricalEditModal } from './ConfirmHistoricalEditModal';
@@ -207,7 +208,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
           <div>
             <h3 className="text-sm font-semibold text-white">
-              Daily habits (12 disciplines)
+              Daily habits ({getEffectiveHabits(state).filter((h) => !h.disabled).length} disciplines)
             </h3>
             <span className="text-xs text-zinc-400">
               {isPastDay
@@ -219,9 +220,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
           </div>
         </div>
 
-        {/* 12 Habits colorful bubbles (Image 2 spacious layout) */}
+        {/* Habits colorful bubbles */}
         <div className="space-y-3.5 sm:space-y-4">
-          {HABIT_DEFINITIONS.map((habit) => {
+          {getEffectiveHabits(state).map((habit) => {
             const isCompleted = !!dayRecord?.habits?.[habit.id];
             let customTarget: string | undefined = undefined;
 

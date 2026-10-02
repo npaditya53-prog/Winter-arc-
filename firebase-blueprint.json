@@ -68,6 +68,13 @@
           "type": "object",
           "description": "User hydration notification preferences and schedule"
         },
+        "habits": {
+          "type": "array",
+          "description": "User customized list of habits with name, target, color, icon, and reminder settings",
+          "items": {
+            "type": "object"
+          }
+        },
         "lastActiveDayNumber": {
           "type": "number",
           "description": "The day number last active"
