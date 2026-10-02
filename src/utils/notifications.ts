@@ -173,22 +173,43 @@ export async function sendTestBackgroundPush(): Promise<{ success: boolean; mess
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
 
+    if (subscription) {
+      const res = await fetch('/api/notifications/test-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        return { success: true, message: 'Test background notification sent! Check your notification tray.' };
+      }
+    }
+
+    // Fallback: trigger notification directly via service worker with full custom logo
+    if (registration && 'showNotification' in registration && Notification.permission === 'granted') {
+      const iconUrl = new URL('/icon-192.png', window.location.origin).href;
+      const badgeUrl = new URL('/icon-badge.png', window.location.origin).href;
+      await (registration as unknown as { showNotification: (t: string, o?: unknown) => Promise<void> }).showNotification('Winter Arc — Hydration Reminder', {
+        body: 'Time for some water. Stay consistent.',
+        icon: iconUrl,
+        badge: badgeUrl,
+        tag: `winter-arc-hydration-test-${Date.now()}`,
+        renotify: true,
+        data: { url: '/?action=hydration', timestamp: Date.now() },
+        actions: [
+          { action: 'log_250', title: '+250 ml Water' },
+          { action: 'snooze_30', title: 'Snooze 30 min' },
+        ],
+      });
+      return { success: true, message: 'Test notification sent! Check your notification tray.' };
+    }
+
     if (!subscription) {
       return { success: false, message: 'Please enable notifications before testing.' };
     }
 
-    const res = await fetch('/api/notifications/test-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint: subscription.endpoint }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      return { success: false, message: data.error || 'Test notification failed.' };
-    }
-
-    return { success: true, message: 'Test background notification sent! Check your notification tray.' };
+    return { success: false, message: 'Failed to send test notification.' };
   } catch (err: unknown) {
     return { success: false, message: (err as Error).message || 'Failed to send test notification.' };
   }

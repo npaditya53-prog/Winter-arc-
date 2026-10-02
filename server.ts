@@ -229,7 +229,7 @@ app.post('/api/notifications/test-push', async (req: Request, res: Response) => 
     title: 'Winter Arc — Hydration Reminder',
     body: 'Time for some water. Stay consistent.',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/icon-badge.png',
     tag: `winter-arc-hydration-test-${Date.now()}`,
     data: {
       url: '/?action=hydration',
@@ -390,7 +390,7 @@ setInterval(async () => {
       title: 'Winter Arc — Hydration Reminder',
       body: 'Time for some water. Stay consistent.',
       icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      badge: '/icon-badge.png',
       tag: `winter-arc-hydration-${userTime.dateStr}-${userTime.hours}`,
       data: {
         url: '/?action=hydration',

@@ -354,65 +354,42 @@ export const HabitRow: React.FC<HabitRowProps> = ({
           : `bg-gradient-to-br ${themeConfig.gradientLight} ${themeConfig.borderLight} text-zinc-900 shadow-sm`
       }`}
     >
-      {/* Top Row: Icon + Title + Habit # and Target Pill */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
-          {/* Large Colorful Bubble Icon (Image 2 style) */}
-          <div
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300 group-hover:scale-105 shadow-sm ${
-              status === 'completed'
-                ? 'bg-[#10B981]/30 border-[#10B981]/50 text-[#34D399]'
-                : status === 'missed'
-                ? 'bg-[#F43F5E]/25 border-[#F43F5E]/50 text-[#FDA4AF]'
-                : isDark
-                ? `${themeConfig.iconBgDark} ${themeConfig.iconColorDark}`
-                : `${themeConfig.iconBgLight} ${themeConfig.iconColorLight}`
-            }`}
-          >
-            {getHabitIcon(themeConfig.iconName, 'w-5 h-5 sm:w-6 sm:h-6 stroke-[2]')}
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-black/30 text-white/70 border border-white/10 shrink-0">
-                #{habit.number}
-              </span>
-              <h4
-                className={`text-base sm:text-lg font-bold tracking-tight leading-tight line-clamp-1 transition-colors ${
-                  status === 'completed'
-                    ? 'text-white'
-                    : status === 'missed'
-                    ? 'text-rose-100'
-                    : isDark
-                    ? 'text-white'
-                    : 'text-zinc-900'
-                }`}
-              >
-                {habit.name}
-              </h4>
-            </div>
-            {/* Category / Target sub-badge */}
-            <span className="text-[11px] font-medium text-white/60 block mt-0.5">
-              {habit.category} discipline
-            </span>
-          </div>
+      {/* Top Row: Icon + Title + Habit # */}
+      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+        {/* Large Colorful Bubble Icon (Image 2 style) */}
+        <div
+          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300 group-hover:scale-105 shadow-sm ${
+            status === 'completed'
+              ? 'bg-[#10B981]/30 border-[#10B981]/50 text-[#34D399]'
+              : status === 'missed'
+              ? 'bg-[#F43F5E]/25 border-[#F43F5E]/50 text-[#FDA4AF]'
+              : isDark
+              ? `${themeConfig.iconBgDark} ${themeConfig.iconColorDark}`
+              : `${themeConfig.iconBgLight} ${themeConfig.iconColorLight}`
+          }`}
+        >
+          {getHabitIcon(themeConfig.iconName, 'w-5 h-5 sm:w-6 sm:h-6 stroke-[2]')}
         </div>
 
-        {/* Target chip on top-right (Image 2 pill style) */}
-        <div className="shrink-0 text-right">
-          <span
-            className={`inline-flex items-center px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border backdrop-blur-sm shadow-sm ${
-              status === 'completed'
-                ? 'bg-[#10B981]/25 text-emerald-200 border-[#10B981]/40'
-                : status === 'missed'
-                ? 'bg-[#F43F5E]/20 text-rose-200 border-[#F43F5E]/40'
-                : isDark
-                ? `${themeConfig.tagColorDark}`
-                : `${themeConfig.tagColorLight}`
-            }`}
-          >
-            {displayTarget}
-          </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-black/30 text-white/70 border border-white/10 shrink-0">
+              #{habit.number}
+            </span>
+            <h4
+              className={`text-base sm:text-lg font-bold tracking-tight leading-tight line-clamp-1 transition-colors ${
+                status === 'completed'
+                  ? 'text-white'
+                  : status === 'missed'
+                  ? 'text-rose-100'
+                  : isDark
+                  ? 'text-white'
+                  : 'text-zinc-900'
+              }`}
+            >
+              {habit.name}
+            </h4>
+          </div>
         </div>
       </div>
 

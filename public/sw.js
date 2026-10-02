@@ -16,7 +16,7 @@ self.addEventListener('push', (event) => {
   let title = 'Winter Arc — Hydration Reminder';
   let body = 'Time for some water. Stay consistent.';
   let icon = '/icon-192.png';
-  let badge = '/icon-192.png';
+  let badge = '/icon-badge.png';
   let tag = 'winter-arc-hydration';
   let data = { url: '/?action=hydration', timestamp: Date.now() };
 
@@ -34,10 +34,14 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // Ensure fully-qualified URL for browser/OS notification tray
+  const resolvedIcon = new URL(icon || '/icon-192.png', self.location.origin).href;
+  const resolvedBadge = new URL(badge || '/icon-badge.png', self.location.origin).href;
+
   const options = {
     body,
-    icon,
-    badge,
+    icon: resolvedIcon,
+    badge: resolvedBadge,
     tag,
     renotify: true,
     requireInteraction: false,

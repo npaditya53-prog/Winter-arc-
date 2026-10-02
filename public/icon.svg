@@ -1,5 +1,97 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#0f1013" rx="100"/>
-  <path d="M256 64 L400 128 L400 272 C400 376 256 448 256 448 C256 448 112 376 112 272 L112 128 Z" fill="#15171c" stroke="#2563eb" stroke-width="20" stroke-linejoin="round"/>
-  <path d="M256 160 C256 160 192 240 192 296 C192 331.3 220.7 360 256 360 C291.3 360 320 331.3 320 296 C320 240 256 160 256 160 Z" fill="#3b82f6"/>
+  <defs>
+    <!-- Outer Rim Gradient: Vibrant Cyan into Deep Royal Blue -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="30%" stop-color="#0EA5E9"/>
+      <stop offset="70%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <!-- Shield Plate Fill: Deep disciplined dark navy with subtle glow -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141B28"/>
+      <stop offset="50%" stop-color="#0D131F"/>
+      <stop offset="100%" stop-color="#080C14"/>
+    </linearGradient>
+
+    <!-- Central Droplet Gradient: Luminous Ice Blue to Electric Cyan -->
+    <linearGradient id="dropGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="25%" stop-color="#38BDF8"/>
+      <stop offset="70%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <!-- Outer Arc Glow -->
+    <linearGradient id="arcGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow Filter for Depth -->
+    <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0284C7" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Main Shield Body with Glow and Transparent Canvas -->
+  <g filter="url(#shieldGlow)">
+    <!-- Shield Outer Shell -->
+    <path
+      d="M 256,68 L 404,102 C 416,192 418,272 396,316 C 364,380 306,426 256,446 C 206,426 148,380 116,316 C 94,272 96,192 108,102 Z"
+      fill="url(#shieldGrad)"
+      stroke="url(#rimGrad)"
+      stroke-width="16"
+      stroke-linejoin="round"
+    />
+
+    <!-- Inner Shield Inset Trim -->
+    <path
+      d="M 256,86 L 388,116 C 398,194 400,264 382,304 C 354,362 302,404 256,424 C 210,404 158,362 130,304 C 112,264 114,194 124,116 Z"
+      fill="none"
+      stroke="#38BDF8"
+      stroke-width="3"
+      stroke-opacity="0.3"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Left Dynamic Arc Wing -->
+  <path
+    d="M 148,236 C 156,288 186,340 234,366 C 196,342 170,298 164,248 Z"
+    fill="url(#arcGlow)"
+  />
+
+  <!-- Right Dynamic Arc Wing -->
+  <path
+    d="M 364,236 C 356,288 326,340 278,366 C 316,342 342,298 348,248 Z"
+    fill="url(#arcGlow)"
+  />
+
+  <!-- Central Luminous Water & Discipline Droplet -->
+  <path
+    d="M 256,162 C 256,162 186,252 186,306 C 186,346 217,378 256,378 C 295,378 326,346 326,306 C 326,252 256,162 256,162 Z"
+    fill="url(#dropGrad)"
+    stroke="#E0F2FE"
+    stroke-width="2"
+    stroke-opacity="0.6"
+  />
+
+  <!-- High-Gloss Specular Highlight on Droplet -->
+  <path
+    d="M 234,222 C 216,248 204,278 204,304 C 204,320 210,332 216,336 C 211,330 207,318 207,302 C 207,276 219,247 236,220 Z"
+    fill="#FFFFFF"
+    opacity="0.85"
+  />
+
+  <!-- Small Secondary Reflection Glint -->
+  <ellipse cx="282" cy="340" rx="9" ry="5" transform="rotate(-30 282 340)" fill="#BAE6FD" opacity="0.6"/>
+
+  <!-- Top Discipline North Star Spark -->
+  <path
+    d="M 256,112 Q 256,126 270,126 Q 256,126 256,140 Q 256,126 242,126 Q 256,126 256,112 Z"
+    fill="#FFFFFF"
+  />
+  <circle cx="256" cy="126" r="2.5" fill="#38BDF8"/>
 </svg>

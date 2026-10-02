@@ -69,8 +69,13 @@ export const Navigation: React.FC<NavigationProps> = ({
           <button
             type="button"
             onClick={() => onSelectTab('dashboard')}
-            className="flex items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8] rounded-xl p-1 group"
+            className="flex items-center gap-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8] rounded-xl p-1 group"
           >
+            <img
+              src="/icon.svg"
+              alt="Winter Arc Logo"
+              className="w-8 h-8 object-contain shrink-0 group-hover:scale-105 transition-transform"
+            />
             <div className="leading-tight">
               <span className="font-bold text-base tracking-tight text-white group-hover:text-[#38BDF8] transition-colors">
                 WINTER <span className="text-[#38BDF8]">ARC</span>

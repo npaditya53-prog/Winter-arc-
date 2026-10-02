@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Full-Bleed Dark Navy Background for Maskable Icon -->
+    <radialGradient id="maskBg" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="60%" stop-color="#0B0E14"/>
+      <stop offset="100%" stop-color="#05070B"/>
+    </radialGradient>
+
+    <linearGradient id="mRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="30%" stop-color="#0EA5E9"/>
+      <stop offset="70%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <linearGradient id="mShieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141B28"/>
+      <stop offset="50%" stop-color="#0D131F"/>
+      <stop offset="100%" stop-color="#080C14"/>
+    </linearGradient>
+
+    <linearGradient id="mDropGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="25%" stop-color="#38BDF8"/>
+      <stop offset="70%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+
+    <linearGradient id="mArcGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <filter id="mShieldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0284C7" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed background for Android safe zone compliance -->
+  <rect width="512" height="512" fill="url(#maskBg)"/>
+
+  <!-- Centered safe-zone scaled emblem (80% safe zone) -->
+  <g transform="translate(56, 56) scale(0.78)">
+    <g filter="url(#mShieldGlow)">
+      <path
+        d="M 256,68 L 404,102 C 416,192 418,272 396,316 C 364,380 306,426 256,446 C 206,426 148,380 116,316 C 94,272 96,192 108,102 Z"
+        fill="url(#mShieldGrad)"
+        stroke="url(#mRimGrad)"
+        stroke-width="16"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M 256,86 L 388,116 C 398,194 400,264 382,304 C 354,362 302,404 256,424 C 210,404 158,362 130,304 C 112,264 114,194 124,116 Z"
+        fill="none"
+        stroke="#38BDF8"
+        stroke-width="3"
+        stroke-opacity="0.3"
+        stroke-linejoin="round"
+      />
+    </g>
+
+    <path
+      d="M 148,236 C 156,288 186,340 234,366 C 196,342 170,298 164,248 Z"
+      fill="url(#mArcGlow)"
+    />
+
+    <path
+      d="M 364,236 C 356,288 326,340 278,366 C 316,342 342,298 348,248 Z"
+      fill="url(#mArcGlow)"
+    />
+
+    <path
+      d="M 256,162 C 256,162 186,252 186,306 C 186,346 217,378 256,378 C 295,378 326,346 326,306 C 326,252 256,162 256,162 Z"
+      fill="url(#mDropGrad)"
+      stroke="#E0F2FE"
+      stroke-width="2"
+      stroke-opacity="0.6"
+    />
+
+    <path
+      d="M 234,222 C 216,248 204,278 204,304 C 204,320 210,332 216,336 C 211,330 207,318 207,302 C 207,276 219,247 236,220 Z"
+      fill="#FFFFFF"
+      opacity="0.85"
+    />
+
+    <ellipse cx="282" cy="340" rx="9" ry="5" transform="rotate(-30 282 340)" fill="#BAE6FD" opacity="0.6"/>
+
+    <path
+      d="M 256,112 Q 256,126 270,126 Q 256,126 256,140 Q 256,126 242,126 Q 256,126 256,112 Z"
+      fill="#FFFFFF"
+    />
+    <circle cx="256" cy="126" r="2.5" fill="#38BDF8"/>
+  </g>
+</svg>
